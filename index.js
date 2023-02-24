@@ -18,7 +18,7 @@ console.log(
   )
 );
 
-const answer = await inquirer.prompt([
+const { project_type } = await inquirer.prompt([
   {
     type: 'list',
     name: 'project_type',
@@ -28,12 +28,27 @@ const answer = await inquirer.prompt([
   },
 ]);
 
-const { project_type } = answer;
+const { react_task } = await inquirer.prompt([
+  {
+    type: 'list',
+    name: 'react_task',
+    message: 'Which task?',
+    choices: [
+      '1: Set up environment',
+      '2: Create React app',
+      '3: Bootstrap React',
+    ],
+    when: () => project_type === 'React',
+    filter: (input, answers) => {
+      return parseInt(input[0]);
+    },
+  },
+]);
 
 const spinner = createSpinner('Creating files...\n').start();
 
 try {
-  await createFiles(project_type);
+  // await createFiles(project_type);
   spinner.success({ text: 'Done! 😃' });
 } catch {
   spinner.error({ text: 'Something went wrong... 🙁' });
