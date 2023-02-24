@@ -24,5 +24,3 @@ Note: Make sure your working directory is your project folder, as it creates the
 - Bootstrap 5 project
 - React app
 - Meteor app (TODO maybe)
-
-https://www.npmjs.com/package/scaffold-314
