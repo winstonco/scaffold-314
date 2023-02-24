@@ -10,6 +10,7 @@ import chalk from 'chalk';
 import inquirer from 'inquirer';
 import { createSpinner } from 'nanospinner';
 import { execSync } from 'child_process';
+import fs from 'fs';
 import { rimrafSync } from 'rimraf';
 
 const rawTemplatesUrl =
@@ -32,36 +33,39 @@ const { project_type } = await inquirer.prompt([
   },
 ]);
 
-const { react_task, app_name } = await inquirer.prompt([
+const { react_task } = await inquirer.prompt([
   {
     type: 'list',
     name: 'react_task',
     message: 'Which task?',
     choices: [
-      '1: Set up environment',
-      '2: Create React app',
-      '3: Bootstrap React',
+      '1: Set up development environment',
+      '2: Create base React app w/ CRA',
     ],
     when: () => project_type === 'React',
     filter: (input, answers) => {
       return parseInt(input[0]);
     },
   },
+]);
+
+const { app_name } = await inquirer.prompt([
   {
     type: 'input',
     name: 'app_name',
     message: 'App name:',
-    when: () => project_type === 'React',
+    when: () => react_task === 2,
   },
 ]);
 
-const spinner = createSpinner('Creating files...\n').start();
+const createFilesSpinner = createSpinner('Creating files...\n').start();
+const filesCreated = [];
 
 try {
   await scaffold(project_type, react_task, app_name);
-  spinner.success({ text: 'Done! 😃' });
+  createFilesSpinner.success({ text: 'Done! 😃' });
 } catch {
-  spinner.error({ text: 'Something went wrong... 🙁' });
+  createFilesSpinner.error({ text: 'Something went wrong... 🙁' });
   process.exit(1);
 }
 
@@ -117,6 +121,23 @@ function runCreateReactApp(appName, deleteSrc = false) {
 
 function createFiles(fileList, templateUrl) {
   fileList.forEach((fileName) => {
-    execSync(`curl -O -s ${templateUrl}/${fileName}`);
+    if (!fs.existsSync(fileName)) {
+      execSync(`curl -O -s ${templateUrl}/${fileName}`);
+      filesCreated.push(fileName);
+    } else {
+      handleFileConflict(fileName);
+    }
   });
+}
+
+function handleFileConflict(fileName) {
+  createFilesSpinner.error(
+    `Conflicting file. Could not create file: ${fileName}`
+  );
+  const cleanUpSpinner = createSpinner('Removing created files...\n').start();
+  filesCreated.forEach((file) => {
+    fs.unlinkSync(file);
+  });
+  cleanUpSpinner.success({ text: 'Other files were removed successfully.' });
+  process.exit(1);
 }
