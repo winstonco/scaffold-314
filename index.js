@@ -10,6 +10,10 @@ import chalk from 'chalk';
 import inquirer from 'inquirer';
 import { createSpinner } from 'nanospinner';
 import { execSync } from 'child_process';
+import { rimrafSync } from 'rimraf';
+
+const rawTemplatesUrl =
+  'https://raw.githubusercontent.com/winstonco/scaffold-314/main/templates/';
 
 console.log(chalk.green.bold('Welcome!'));
 console.log(
@@ -28,7 +32,7 @@ const { project_type } = await inquirer.prompt([
   },
 ]);
 
-const { react_task } = await inquirer.prompt([
+const { react_task, app_name } = await inquirer.prompt([
   {
     type: 'list',
     name: 'react_task',
@@ -43,56 +47,76 @@ const { react_task } = await inquirer.prompt([
       return parseInt(input[0]);
     },
   },
+  {
+    type: 'input',
+    name: 'app_name',
+    message: 'App name:',
+    when: () => project_type === 'React',
+  },
 ]);
 
 const spinner = createSpinner('Creating files...\n').start();
 
 try {
-  // await createFiles(project_type);
+  await scaffold(project_type, react_task, app_name);
   spinner.success({ text: 'Done! 😃' });
 } catch {
   spinner.error({ text: 'Something went wrong... 🙁' });
   process.exit(1);
 }
 
-function createFiles(project_type) {
-  return new Promise((res, rej) => {
-    try {
-      const templateUrl = getTemplateUrl(project_type);
-      const fileList = getFileList(project_type);
-      fileList.forEach((fileName) => {
-        execSync(`curl -O -s ${templateUrl}/${fileName}`);
-      });
-      res();
-    } catch {
-      rej();
+function scaffold(projectType, reactTask = 0, appName = '') {
+  return new Promise(async (res, rej) => {
+    switch (projectType) {
+      case 'Native':
+        scaffoldNative();
+        break;
+      case 'Bootstrap 5':
+        scaffoldBootstrap();
+        break;
+      case 'React':
+        scaffoldReact(reactTask, appName);
+        break;
+      default:
+        rej();
     }
+    res();
   });
 }
 
-function getTemplateUrl(project_type) {
-  let url =
-    'https://raw.githubusercontent.com/winstonco/scaffold-314/main/templates/';
-  switch (project_type) {
-    case 'Native':
-      url += 'native';
-      break;
-    case 'Bootstrap 5':
-      url += 'bootstrap';
-      break;
-  }
-  return url;
+function scaffoldNative() {
+  const fileList = ['index.html', 'index.js', 'style.css'];
+  createFiles(fileList, rawTemplatesUrl + 'native');
 }
 
-function getFileList(project_type) {
-  let fileList = [];
-  switch (project_type) {
-    case 'Native':
-      fileList = ['index.html', 'index.js', 'style.css'];
+function scaffoldBootstrap() {
+  const fileList = ['index.html', 'style.css'];
+  createFiles(fileList, rawTemplatesUrl + 'bootstrap');
+}
+
+function scaffoldReact(taskNumber, appName) {
+  switch (taskNumber) {
+    case 1:
+      createFiles(['.gitignore'], rawTemplatesUrl + 'react/tast_1');
       break;
-    case 'Bootstrap 5':
-      fileList = ['index.html', 'style.css'];
+    case 2:
+      runCreateReactApp(appName, true);
       break;
+    case 3:
+      console.log('test');
+      break;
+    default:
+      throw new Error('Invalid taskNumber');
   }
-  return fileList;
+}
+
+function runCreateReactApp(appName, deleteSrc = false) {
+  execSync(`npx create-react-app ${appName}`);
+  if (deleteSrc) rimrafSync('src');
+}
+
+function createFiles(fileList, templateUrl) {
+  fileList.forEach((fileName) => {
+    execSync(`curl -O -s ${templateUrl}/${fileName}`);
+  });
 }
