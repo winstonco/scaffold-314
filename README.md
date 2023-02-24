@@ -1,2 +1,4 @@
 # scaffold314
 Project scaffolding tool for ICS 314 assignments
+
+https://www.npmjs.com/package/scaffold-314
