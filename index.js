@@ -64,6 +64,12 @@ const filesCreated = [];
 try {
   await scaffold(project_type, react_task, app_name);
   createFilesSpinner.success({ text: 'Done! 😃' });
+  if (app_name)
+    console.log(
+      chalk.bgWhite.black(`\n Now run `) +
+        chalk.bgWhite.cyan.bold(` cd ${app_name} `) +
+        chalk.bgWhite.black(` `)
+    );
 } catch {
   createFilesSpinner.error({ text: 'Something went wrong... 🙁' });
   process.exit(1);
@@ -114,9 +120,13 @@ function scaffoldReact(taskNumber, appName) {
   }
 }
 
-function runCreateReactApp(appName, deleteSrc = false) {
+function runCreateReactApp(appName, deleteSrcContents = false) {
+  createFilesSpinner.update({ text: 'Hold on, this could take a while!' });
   execSync(`npx create-react-app ${appName}`);
-  if (deleteSrc) rimrafSync('src');
+  if (deleteSrcContents) {
+    rimrafSync(`${appName}/src`);
+    fs.mkdirSync(`${appName}/src`);
+  }
 }
 
 function createFiles(fileList, templateUrl) {
