@@ -1,12 +1,15 @@
 #!/usr/bin/env node
 
-// Inspired by: https://www.youtube.com/watch?v=_oHByo8tiEY&ab_channel=Fireship
+/*
+  Inspiration from:
+  - https://www.youtube.com/watch?v=_oHByo8tiEY&ab_channel=Fireship
+  -https://dev.to/leopold/generate-your-web-app-boilerplate-like-create-react-app-does-301p
+*/
 
 import chalk from 'chalk';
 import inquirer from 'inquirer';
-import fs from 'fs';
-import path from 'path';
 import { createSpinner } from 'nanospinner';
+import { execSync } from 'child_process';
 
 console.log(chalk.green.bold('Welcome!'));
 console.log(
@@ -27,20 +30,7 @@ const answer = await inquirer.prompt([
 
 const { project_type } = answer;
 
-const spinner = createSpinner('Creating files');
-spinner.start();
-
-const createFiles = (project_type) => {
-  return new Promise((res, rej) => {
-    switch (project_type) {
-      case 'Native':
-        break;
-      default:
-        rej();
-    }
-    res();
-  });
-};
+const spinner = createSpinner('Creating files...\n').start();
 
 try {
   await createFiles(project_type);
@@ -50,4 +40,44 @@ try {
   process.exit(1);
 }
 
-// console.log(project_type);
+function createFiles(project_type) {
+  return new Promise((res, rej) => {
+    try {
+      const templateUrl = getTemplateUrl(project_type);
+      const fileList = getFileList(project_type);
+      fileList.forEach((fileName) => {
+        execSync(`curl -O -s ${templateUrl}/${fileName}`);
+      });
+      res();
+    } catch {
+      rej();
+    }
+  });
+}
+
+function getTemplateUrl(project_type) {
+  let url =
+    'https://raw.githubusercontent.com/winstonco/scaffold-314/main/templates/';
+  switch (project_type) {
+    case 'Native':
+      url += 'native';
+      break;
+    case 'Bootstrap 5':
+      url += 'bootstrap';
+      break;
+  }
+  return url;
+}
+
+function getFileList(project_type) {
+  let fileList = [];
+  switch (project_type) {
+    case 'Native':
+      fileList = ['index.html', 'index.js', 'style.css'];
+      break;
+    case 'Bootstrap 5':
+      fileList = ['index.html', 'style.css'];
+      break;
+  }
+  return fileList;
+}
