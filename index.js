@@ -101,7 +101,7 @@ function scaffoldBootstrap() {
 function scaffoldReact(taskNumber, appName) {
   switch (taskNumber) {
     case 1:
-      createFiles(['.gitignore'], rawTemplatesUrl + 'react/tast_1');
+      createFiles(['.gitignore'], rawTemplatesUrl + 'react/task_1');
       break;
     case 2:
       runCreateReactApp(appName, true);
