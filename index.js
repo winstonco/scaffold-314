@@ -9,7 +9,7 @@
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import { createSpinner } from 'nanospinner';
-import { execSync } from 'child_process';
+import { exec, execSync } from 'child_process';
 import fs from 'fs';
 import { rimrafSync } from 'rimraf';
 
@@ -23,51 +23,69 @@ console.log(
   )
 );
 
-const { project_type } = await inquirer.prompt([
+const { projectType } = await inquirer.prompt([
   {
     type: 'list',
-    name: 'project_type',
+    name: 'projectType',
     message: 'What kind of project are you making?',
     default: 'Native',
     choices: ['Native', 'Bootstrap 5', 'React'],
   },
 ]);
 
-const { react_task } = await inquirer.prompt([
+const { bootstrapIcons } = await inquirer.prompt([
+  {
+    type: 'confirm',
+    name: 'bootstrapIcons',
+    message: 'Include buttons?',
+    default: true,
+    when: () => projectType === 'Bootstrap 5',
+  },
+]);
+
+const { reactTask } = await inquirer.prompt([
   {
     type: 'list',
-    name: 'react_task',
+    name: 'reactTask',
     message: 'Which task?',
     choices: [
       '1: Set up development environment',
       '2: Create base React app w/ CRA',
     ],
-    when: () => project_type === 'React',
+    when: () => projectType === 'React',
     filter: (input, answers) => {
       return parseInt(input[0]);
     },
   },
 ]);
 
-const { app_name } = await inquirer.prompt([
+const { appName } = await inquirer.prompt([
   {
     type: 'input',
-    name: 'app_name',
+    name: 'appName',
     message: 'App name:',
-    when: () => react_task === 2,
+    when: () => reactTask === 2,
   },
 ]);
 
 const createFilesSpinner = createSpinner('Creating files...\n').start();
 const filesCreated = [];
 
+const responses = {
+  projectType,
+  bootstrapIcons,
+  reactTask,
+  appName,
+};
+
 try {
-  await scaffold(project_type, react_task, app_name);
+  // await new Promise((res) => setTimeout(res, 1000));
+  await scaffold(responses);
   createFilesSpinner.success({ text: 'Done! 😃' });
-  if (app_name)
+  if (appName)
     console.log(
       chalk.bgWhite.black(`\n Now run `) +
-        chalk.bgWhite.cyan.bold(` cd ${app_name} `) +
+        chalk.bgWhite.cyan.bold(` cd ${appName} `) +
         chalk.bgWhite.black(` `)
     );
 } catch {
@@ -75,17 +93,19 @@ try {
   process.exit(1);
 }
 
-function scaffold(projectType, reactTask = 0, appName = '') {
+function scaffold(options) {
+  const { projectType, bootstrapIcons, reactTask, appName } = options;
+
   return new Promise(async (res, rej) => {
     switch (projectType) {
       case 'Native':
-        scaffoldNative();
+        await scaffoldNative();
         break;
       case 'Bootstrap 5':
-        scaffoldBootstrap();
+        await scaffoldBootstrap(bootstrapIcons);
         break;
       case 'React':
-        scaffoldReact(reactTask, appName);
+        await scaffoldReact(reactTask, appName);
         break;
       default:
         rej();
@@ -94,23 +114,25 @@ function scaffold(projectType, reactTask = 0, appName = '') {
   });
 }
 
-function scaffoldNative() {
+async function scaffoldNative() {
   const fileList = ['index.html', 'index.js', 'style.css'];
-  createFiles(fileList, rawTemplatesUrl + 'native');
+  await createFiles(fileList, rawTemplatesUrl + 'native');
 }
 
-function scaffoldBootstrap() {
+async function scaffoldBootstrap(includeIcons) {
   const fileList = ['index.html', 'style.css'];
-  createFiles(fileList, rawTemplatesUrl + 'bootstrap');
+  includeIcons
+    ? await createFiles(fileList, rawTemplatesUrl + 'bootstrap/icons')
+    : await createFiles(fileList, rawTemplatesUrl + 'bootstrap/no_icons');
 }
 
-function scaffoldReact(taskNumber, appName) {
+async function scaffoldReact(taskNumber, appName) {
   switch (taskNumber) {
     case 1:
-      createFiles(['.gitignore'], rawTemplatesUrl + 'react/task_1');
+      await createFiles(['.gitignore'], rawTemplatesUrl + 'react/task_1');
       break;
     case 2:
-      runCreateReactApp(appName, true);
+      await runCreateReactApp(appName, true);
       break;
     case 3:
       console.log('test');
@@ -121,22 +143,34 @@ function scaffoldReact(taskNumber, appName) {
 }
 
 function runCreateReactApp(appName, deleteSrcContents = false) {
-  createFilesSpinner.update({ text: 'Hold on, this could take a while!' });
-  execSync(`npx create-react-app ${appName}`);
-  if (deleteSrcContents) {
-    rimrafSync(`${appName}/src`);
-    fs.mkdirSync(`${appName}/src`);
-  }
+  createFilesSpinner.update({ text: 'Hold on, this could take a while!\n' });
+  return new Promise((res) => {
+    exec(`npx create-react-app ${appName}`, () => {
+      if (deleteSrcContents) {
+        rimrafSync(`${appName}/src`);
+        fs.mkdirSync(`${appName}/src`);
+        res();
+      }
+    });
+  });
 }
 
 function createFiles(fileList, templateUrl) {
-  fileList.forEach((fileName) => {
-    if (!fs.existsSync(fileName)) {
-      execSync(`curl -O -s ${templateUrl}/${fileName}`);
-      filesCreated.push(fileName);
-    } else {
-      handleFileConflict(fileName);
-    }
+  let counter = 0;
+  return new Promise((res) => {
+    fileList.forEach((fileName) => {
+      if (!fs.existsSync(fileName)) {
+        exec(`curl -O -s ${templateUrl}/${fileName}`, () => {
+          counter++;
+          if (counter === fileList.length) {
+            res();
+          }
+        });
+        filesCreated.push(fileName);
+      } else {
+        handleFileConflict(fileName);
+      }
+    });
   });
 }
 

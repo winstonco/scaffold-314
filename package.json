@@ -1,6 +1,6 @@
 {
   "name": "scaffold-314",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Project scaffolding tool for ICS 314 assignments",
   "main": "index.js",
   "type": "module",
